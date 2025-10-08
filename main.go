@@ -1,9 +1,12 @@
 package main
 
 import (
+	"net/url"
 	"os"
+	"strings"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/cors"
 
 	"github.com/goccy/go-json"
 	"github.com/joho/godotenv"
@@ -34,6 +37,25 @@ func main() {
 		JSONEncoder: json.Marshal,
 		JSONDecoder: json.Unmarshal,
 	})
+
+	rootDomain := os.Getenv("APP_ROOT_DOMAIN")
+
+	app.Use(cors.New(cors.Config{
+		AllowCredentials: true,
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
+		AllowOriginsFunc: func(origin string) bool {
+			if rootDomain == "" {
+				return false
+			}
+
+			parsedOrigin, err := url.Parse(origin)
+			if err != nil {
+				return false // malformed origin, bad :(
+			}
+
+			return parsedOrigin.Hostname() == rootDomain || strings.HasSuffix(parsedOrigin.Hostname(), "."+rootDomain)
+		},
+	}))
 
 	app.Use(func(c fiber.Ctx) error {
 		data := fiber.Map{
