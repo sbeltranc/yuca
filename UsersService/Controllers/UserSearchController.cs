@@ -1,7 +1,8 @@
 using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
 using UsersService.Models;
-using UsersService.Data;
+using Shared.Data.Data;
+using Shared.Data.Entities;
 using System.Threading.Tasks;
 using System.Linq;
 using Microsoft.EntityFrameworkCore;
@@ -41,7 +42,7 @@ namespace UsersService.Controllers
 
             if (!string.IsNullOrEmpty(cursor) && long.TryParse(cursor, out long cursorId))
             {
-                query = query.Where(u => u.Id > cursorId);
+                query = query.Where(u => u.Id > cursorId).OrderBy(u => u.Id);
             }
 
             var users = await query.Take(limit).ToListAsync();

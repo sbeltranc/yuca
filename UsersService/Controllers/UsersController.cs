@@ -5,7 +5,8 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Linq;
 using System;
-using UsersService.Data;
+using Shared.Data.Data;
+using Shared.Data.Entities;
 using UsersService.Models;
 
 namespace UsersService.Controllers
@@ -114,7 +115,7 @@ namespace UsersService.Controllers
         }
 
         [HttpPost]
-        public ActionResult<ApiArrayResponse<MultiGetUserResponse>> GetUsersByIds([FromBody] MultiGetByUserIdRequest request)
+        public async Task<ActionResult<ApiArrayResponse<MultiGetUserResponse>>> GetUsersByIds([FromBody] MultiGetByUserIdRequest request)
         {
             if (request?.UserIds == null || !request.UserIds.Any())
             {

@@ -1,7 +1,7 @@
 using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
 using UsersService.Models;
-using UsersService.Data;
+using Shared.Data.Data;
 
 namespace UsersService.Controllers
 {

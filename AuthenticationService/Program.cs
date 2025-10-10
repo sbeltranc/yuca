@@ -1,5 +1,8 @@
 using Microsoft.EntityFrameworkCore;
-using AuthenticationService.Data;
+using Shared.Data.Data;
+using AuditService.Data;
+using AuditService.Services;
+
 using StackExchange.Redis;
 using Asp.Versioning;
 
@@ -10,6 +13,7 @@ builder.Configuration.AddJsonFile("../Shared/shared.appsettings.json", optional:
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 builder.Services.AddControllers();
+builder.Services.AddScoped<IAuditService, AuditService.Services.AuditService>();
 
 builder.Services.AddApiVersioning(options =>
 {
@@ -24,7 +28,16 @@ builder.Services.AddApiVersioning(options =>
 });
 
 builder.Services.AddDbContext<AuthDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("PostgreSQL")));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("PostgreSQL"),
+    x => x.MigrationsAssembly("Shared.Data")));
+
+builder.Services.AddDbContext<UsersDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("PostgreSQL"),
+    x => x.MigrationsAssembly("Shared.Data")));
+
+builder.Services.AddDbContext<AuditDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("PostgreSQL"),
+    x => x.MigrationsAssembly("AuditService")));
 
 builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
 {

@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using UsersService.Data;
+using Shared.Data.Data;
 using StackExchange.Redis;
 using Asp.Versioning;
 
@@ -24,7 +24,8 @@ builder.Services.AddApiVersioning(options =>
 });
 
 builder.Services.AddDbContext<UsersDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("PostgreSQL")));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("PostgreSQL"),
+    x => x.MigrationsAssembly("Shared.Data")));
 
 builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
 {

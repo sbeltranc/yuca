@@ -2,6 +2,6 @@ namespace AuthenticationService.Models
 {
     public class AccountPinResponse
     {
-        public double? UnlockedUntil { get; set; }
+        public long? UnlockedUntil { get; set; }
     }
 }
