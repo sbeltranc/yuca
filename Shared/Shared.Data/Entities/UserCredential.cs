@@ -11,7 +11,7 @@ namespace Shared.Data.Entities
         public long UserId { get; set; }
 
         [Required]
-        public string PasswordHash { get; set; }
+        public string PasswordHash { get; set; } = string.Empty;
 
         public string? Pin { get; set; }
 

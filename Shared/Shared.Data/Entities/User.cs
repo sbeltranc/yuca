@@ -11,13 +11,16 @@ namespace Shared.Data.Entities
 
         [Required]
         [MaxLength(20)]
-        public string Name { get; set; }
+        public string Name { get; set; } // REQUIRED.
+
+        public string Email { get; set; } = string.Empty;
+        public DateTime Birthdate { get; set; }
 
         [Required]
         [MaxLength(20)]
-        public string DisplayName { get; set; }
+        public string DisplayName { get; set; } = string.Empty;
 
-        public string Description { get; set; }
+        public string Description { get; set; } = string.Empty;
 
         public DateTime Created { get; set; }
 

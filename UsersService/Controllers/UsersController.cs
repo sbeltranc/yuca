@@ -9,6 +9,8 @@ using Shared.Data.Data;
 using Shared.Data.Entities;
 using UsersService.Models;
 
+using Shared.Services.Cache;
+
 namespace UsersService.Controllers
 {
     [ApiController]
@@ -17,16 +19,28 @@ namespace UsersService.Controllers
     public class UsersController : ControllerBase
     {
         private readonly UsersDbContext _context;
+        private readonly IRedisCacheService _redisCacheService;
 
-        public UsersController(UsersDbContext context)
+        public UsersController(UsersDbContext context, IRedisCacheService redisCacheService)
         {
             _context = context;
+            _redisCacheService = redisCacheService;
         }
 
         [HttpGet("{userId}")]
         public async Task<ActionResult<GetUserResponse>> GetUserById([FromRoute] long userId)
         {
-            var user = await _context.Users.FindAsync(userId);
+            var cacheKey = $"user:{userId}";
+            var user = await _redisCacheService.GetAsync<User>(cacheKey);
+
+            if (user == null)
+            {
+                user = await _context.Users.FindAsync(userId);
+                if (user != null)
+                {
+                    await _redisCacheService.SetAsync(cacheKey, user, TimeSpan.FromMinutes(15));
+                }
+            }
 
             if (user == null)
             {

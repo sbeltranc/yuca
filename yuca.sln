@@ -13,6 +13,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shared.Data", "Shared\Share
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AuditService", "AuditService\AuditService.csproj", "{5A37EAFB-D245-410F-A917-FF72201F2490}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shared.Services", "Shared\Shared.Services\Shared.Services.csproj", "{5AFF794D-6FF7-4E61-962E-D93CE9AD0C24}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -38,8 +40,13 @@ Global
 		{5A37EAFB-D245-410F-A917-FF72201F2490}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5A37EAFB-D245-410F-A917-FF72201F2490}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5A37EAFB-D245-410F-A917-FF72201F2490}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5AFF794D-6FF7-4E61-962E-D93CE9AD0C24}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5AFF794D-6FF7-4E61-962E-D93CE9AD0C24}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5AFF794D-6FF7-4E61-962E-D93CE9AD0C24}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5AFF794D-6FF7-4E61-962E-D93CE9AD0C24}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{07A8E8D6-3411-45F0-955A-D7389D1AC193} = {A945B753-A19A-4F82-8C65-48E4E8DC7F6D}
+		{5AFF794D-6FF7-4E61-962E-D93CE9AD0C24} = {A945B753-A19A-4F82-8C65-48E4E8DC7F6D}
 	EndGlobalSection
 EndGlobal

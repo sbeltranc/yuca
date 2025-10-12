@@ -6,12 +6,13 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Shared.Data.Entities;
 using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
 using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
 using AuditService.Services;
+using Shared.Services;
+
+using Shared.Services.Cache;
 
 namespace AuthenticationService.Controllers
 {
@@ -23,33 +24,46 @@ namespace AuthenticationService.Controllers
         private readonly AuthDbContext _authDbContext;
         private readonly UsersDbContext _usersDbContext;
         private readonly IAuditService _auditService;
+        private readonly IAuthenticatedUserService _authenticatedUserService;
+        private readonly IRedisCacheService _redisCacheService;
 
-        public AuthenticationController(AuthDbContext authDbContext, UsersDbContext usersDbContext, IAuditService auditService)
+        public AuthenticationController(AuthDbContext authDbContext, UsersDbContext usersDbContext, IAuditService auditService, IAuthenticatedUserService authenticatedUserService, IRedisCacheService redisCacheService)
         {
             _authDbContext = authDbContext;
             _usersDbContext = usersDbContext;
             _auditService = auditService;
+            _authenticatedUserService = authenticatedUserService;
+            _redisCacheService = redisCacheService;
         }
 
         [HttpPost("login")]
         public async Task<ActionResult<LoginResponse>> Login([FromBody] LoginRequest request)
         {
-            User user = null;
-            switch (request.ctype)
+            var cacheKey = $"user:{request.ctype}:{request.cvalue}";
+            User user = await _redisCacheService.GetAsync<User>(cacheKey);
+
+            if (user == null)
             {
-                case "Username":
-                    user = await _usersDbContext.Users.FirstOrDefaultAsync(u => u.Name == request.cvalue);
-                    break;
-                case "Email":
-                    // not implementing yet cuz.. i dont store emails yet
-                    break;
+                switch (request.ctype)
+                {
+                    case "Username":
+                        user = await _usersDbContext.Users.FirstOrDefaultAsync(u => u.Name == request.cvalue);
+                        break;
+                    case "Email":
+                        user = await _usersDbContext.Users.FirstOrDefaultAsync(u => u.Email == request.cvalue);
+                        break;
+                }
+
+                if (user != null)
+                {
+                    await _redisCacheService.SetAsync(cacheKey, user, TimeSpan.FromMinutes(15));
+                }
             }
 
             var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty;
 
             if (user == null)
             {
-                await _auditService.AddRecordAsync(null, ipAddress, "LoginAttempt", new { Ctype = request.ctype, Cvalue = request.cvalue, Success = false });
                 return Unauthorized(new ErrorResponse { Errors = new System.Collections.Generic.List<Error> { new Error { Code = 1, Message = "Incorrect username or password. Please try again." } } });
             }
 
@@ -57,13 +71,13 @@ namespace AuthenticationService.Controllers
 
             if (userCredential == null || !BCrypt.Net.BCrypt.Verify(request.password, userCredential.PasswordHash))
             {
-                await _auditService.AddRecordAsync(user.Id, ipAddress, "LoginAttempt", new { Ctype = request.ctype, Cvalue = request.cvalue, Success = false });
+                await _auditService.AddRecordAsync(user.Id, ipAddress, "user.login", new { Ctype = request.ctype, Cvalue = request.cvalue, Success = false, Reason = "InvalidCredentials" });
                 return Unauthorized(new ErrorResponse { Errors = new System.Collections.Generic.List<Error> { new Error { Code = 1, Message = "Incorrect username or password. Please try again." } } });
             }
 
-            await _auditService.AddRecordAsync(user.Id, ipAddress, "LoginAttempt", new { Ctype = request.ctype, Cvalue = request.cvalue, Success = true });
+            await _auditService.AddRecordAsync(user.Id, ipAddress, "user.login", new { Ctype = request.ctype, Cvalue = request.cvalue, Success = true });
 
-            var securityToken = GenerateSecurityToken();
+            var securityToken = await _authenticatedUserService.CreateSecurityTokenAsync(user.Id);
             Response.Cookies.Append(".ROBLOSECURITY", securityToken, new CookieOptions { HttpOnly = true, Secure = true, SameSite = SameSiteMode.Lax });
 
             return Ok(new LoginResponse
@@ -90,7 +104,9 @@ namespace AuthenticationService.Controllers
             {
                 Name = request.Username,
                 DisplayName = request.Username,
-                Created = DateTime.UtcNow
+                Description = "",
+                Created = DateTime.UtcNow,
+                Birthdate = request.Birthday
             };
 
             _usersDbContext.Users.Add(user);
@@ -106,7 +122,7 @@ namespace AuthenticationService.Controllers
             await _authDbContext.SaveChangesAsync();
 
             var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty;
-            await _auditService.AddRecordAsync(user.Id, ipAddress, "Signup", new { Username = request.Username });
+            await _auditService.AddRecordAsync(user.Id, ipAddress, "user.signup", new { Username = request.Username });
 
             return Ok(new SignupResponse { UserId = user.Id });
         }
@@ -114,17 +130,7 @@ namespace AuthenticationService.Controllers
         [HttpGet("auth/metadata")]
         public ActionResult<AuthMetaDataResponse> GetMetaData()
         {
-            return Ok(new AuthMetaDataResponse { CookieLawNoticeTimeout = 30 });
-        }
-
-        private string GenerateSecurityToken()
-        {
-            using (var randomNumberGenerator = RandomNumberGenerator.Create())
-            {
-                var randomBytes = new byte[256];
-                randomNumberGenerator.GetBytes(randomBytes);
-                return Convert.ToBase64String(randomBytes);
-            }
+            return Ok(new AuthMetaDataResponse { CookieLawNoticeTimeout = 3000 });
         }
     }
 }

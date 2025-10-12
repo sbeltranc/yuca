@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   authenticationservice:
     build:
@@ -12,6 +10,8 @@ services:
       - ASPNETCORE_URLS=http://+:8080
       - ConnectionStrings__PostgreSQL=Host=postgres;Port=5432;Database=yuca;Username=postgres;Password=postgres
       - ConnectionStrings__Redis=redis:6379
+    volumes:
+      - ./appsettings.json:/app/appsettings.json
     depends_on:
       - postgres
       - redis
@@ -27,6 +27,8 @@ services:
       - ASPNETCORE_URLS=http://+:8080
       - ConnectionStrings__PostgreSQL=Host=postgres;Port=5432;Database=yuca;Username=postgres;Password=postgres
       - ConnectionStrings__Redis=redis:6379
+    volumes:
+      - ./appsettings.json:/app/appsettings.json
     depends_on:
       - postgres
       - redis

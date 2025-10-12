@@ -3,6 +3,9 @@ using Microsoft.AspNetCore.Mvc;
 using UsersService.Models;
 using Shared.Data.Data;
 
+using Shared.Services.Cache;
+using Microsoft.EntityFrameworkCore;
+
 namespace UsersService.Controllers
 {
     [ApiController]
@@ -11,10 +14,12 @@ namespace UsersService.Controllers
     public class DisplayNamesController : ControllerBase
     {
         private readonly UsersDbContext _context;
+        private readonly IRedisCacheService _redisCacheService;
 
-        public DisplayNamesController(UsersDbContext context)
+        public DisplayNamesController(UsersDbContext context, IRedisCacheService redisCacheService)
         {
             _context = context;
+            _redisCacheService = redisCacheService;
         }
         [HttpGet("display-names/validate")]
         public IActionResult ValidateDisplayName([FromQuery] string displayName, [FromQuery] System.DateTime birthdate)
@@ -31,9 +36,20 @@ namespace UsersService.Controllers
         }
 
         [HttpPatch("users/{userId}/display-names")]
-        public IActionResult SetDisplayName([FromRoute] long userId, [FromBody] SetDisplayNameRequest request)
+        public async Task<IActionResult> SetDisplayName([FromRoute] long userId, [FromBody] SetDisplayNameRequest request)
         {
-            // TODO: Implement logic
+            var user = await _context.Users.FindAsync(userId);
+            if (user == null)
+            {
+                return NotFound();
+            }
+
+            user.DisplayName = request.NewDisplayName;
+            await _context.SaveChangesAsync();
+
+            var cacheKey = $"user:{userId}";
+            await _redisCacheService.DeleteAsync(cacheKey);
+
             return Ok();
         }
     }

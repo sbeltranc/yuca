@@ -7,7 +7,7 @@ namespace AuthenticationService.Models
         public bool IsEmailChanged { get; set; }
         public bool IsPhoneVerified { get; set; }
         public long UserId { get; set; }
-        public string Username { get; set; }
-        public string Ticket { get; set; }
+        public string Username { get; set; } = string.Empty;
+        public string Ticket { get; set; } = string.Empty;
     }
 }

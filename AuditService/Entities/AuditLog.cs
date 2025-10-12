@@ -10,7 +10,7 @@ namespace AuditService.Entities
         public long? UserId { get; set; }
         public DateTime Timestamp { get; set; }
         [Required]
-        public string IpAddress { get; set; }
-        public string Metadata { get; set; }
+        public string IpAddress { get; set; } = string.Empty;
+        public string Metadata { get; set; } = string.Empty;
     }
 }

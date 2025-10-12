@@ -19,6 +19,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Shared\Shared.Data\Shared.Data.csproj" />
+    <ProjectReference Include="..\Shared\Shared.Services\Shared.Services.csproj" />
   </ItemGroup>
 
 </Project>

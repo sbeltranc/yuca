@@ -22,6 +22,22 @@ namespace Shared.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Shared.Data.Entities.SecurityToken", b =>
+                {
+                    b.Property<string>("Token")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("UserId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Token");
+
+                    b.ToTable("SecurityTokens");
+                });
+
             modelBuilder.Entity("Shared.Data.Entities.UserCredential", b =>
                 {
                     b.Property<long>("Id")

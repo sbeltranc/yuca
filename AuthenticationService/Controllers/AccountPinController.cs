@@ -7,6 +7,8 @@ using Microsoft.EntityFrameworkCore;
 using Shared.Data.Entities;
 using System;
 using System.Collections.Generic;
+using Shared.Services;
+using AuditService.Services;
 
 namespace AuthenticationService.Controllers
 {
@@ -16,17 +18,26 @@ namespace AuthenticationService.Controllers
     public class AccountPinController : ControllerBase
     {
         private readonly AuthDbContext _context;
-        private const long HardcodedUserId = 1; // Hardcoded user ID for now
+        private readonly IAuthenticatedUserService _authenticatedUserService;
+        private readonly IAuditService _auditService;
 
-        public AccountPinController(AuthDbContext context)
+        public AccountPinController(AuthDbContext context, IAuthenticatedUserService authenticatedUserService, IAuditService auditService)
         {
             _context = context;
+            _authenticatedUserService = authenticatedUserService;
+            _auditService = auditService;
         }
 
         [HttpGet]
         public async Task<ActionResult<AccountPinStatusResponse>> GetAccountPinStatus()
         {
-            var userCredential = await _context.UserCredentials.FirstOrDefaultAsync(uc => uc.UserId == HardcodedUserId);
+            var user = await _authenticatedUserService.GetCurrentUserAsync();
+            if (user == null)
+            {
+                return Unauthorized(new ErrorResponse { Errors = new List<Error> { new Error { Code = 0, Message = "Authorization has been denied for this request." } } });
+            }
+
+            var userCredential = await _context.UserCredentials.FirstOrDefaultAsync(uc => uc.UserId == user.Id);
 
             if (userCredential == null)
             {
@@ -39,14 +50,17 @@ namespace AuthenticationService.Controllers
         [HttpPost]
         public async Task<ActionResult<ApiSuccessResponse>> NewAccountPin([FromBody] AccountPinRequest request)
         {
-            var userCredential = await _context.UserCredentials.FirstOrDefaultAsync(uc => uc.UserId == HardcodedUserId);
+            var user = await _authenticatedUserService.GetCurrentUserAsync();
+            if (user == null)
+            {
+                return Unauthorized(new ErrorResponse { Errors = new List<Error> { new Error { Code = 0, Message = "Authorization has been denied for this request." } } });
+            }
+
+            var userCredential = await _context.UserCredentials.FirstOrDefaultAsync(uc => uc.UserId == user.Id);
 
             if (userCredential == null)
             {
-                // For simplicity, creating a new credential if one doesn't exist.
-                // In a real scenario, this should be handled as part of user registration.
-                userCredential = new UserCredential { UserId = HardcodedUserId, PasswordHash = "" }; // Empty password hash for now
-                _context.UserCredentials.Add(userCredential);
+                return NotFound();
             }
 
             if (!string.IsNullOrEmpty(userCredential.Pin))
@@ -54,8 +68,10 @@ namespace AuthenticationService.Controllers
                 return BadRequest(new ErrorResponse { Errors = new List<Error> { new Error { Code = 1, Message = "Account PIN already exists." } } });
             }
 
-            userCredential.Pin = request.Pin; // Storing as plain text for now
+            userCredential.Pin = BCrypt.Net.BCrypt.HashPassword(request.Pin);
             await _context.SaveChangesAsync();
+
+            await _auditService.AddRecordAsync(user.Id, HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty, "accountpin.create", new { Success = true });
 
             return Ok(new ApiSuccessResponse { Success = true });
         }
@@ -63,15 +79,29 @@ namespace AuthenticationService.Controllers
         [HttpPatch]
         public async Task<ActionResult<ApiSuccessResponse>> UpdateAccountPin([FromBody] AccountPinRequest request)
         {
-            var userCredential = await _context.UserCredentials.FirstOrDefaultAsync(uc => uc.UserId == HardcodedUserId);
+            var user = await _authenticatedUserService.GetCurrentUserAsync();
+            if (user == null)
+            {
+                return Unauthorized(new ErrorResponse { Errors = new List<Error> { new Error { Code = 0, Message = "Authorization has been denied for this request." } } });
+            }
+
+            var userCredential = await _context.UserCredentials.FirstOrDefaultAsync(uc => uc.UserId == user.Id);
 
             if (userCredential == null || string.IsNullOrEmpty(userCredential.Pin))
             {
                 return BadRequest(new ErrorResponse { Errors = new List<Error> { new Error { Code = 2, Message = "Account PIN not set." } } });
             }
 
-            userCredential.Pin = request.Pin; // Storing as plain text for now
+            if (!BCrypt.Net.BCrypt.Verify(request.Pin, userCredential.Pin))
+            {
+                await _auditService.AddRecordAsync(user.Id, HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty, "accountpin.update.attempt", new { Success = false, Reason = "InvalidPin" });
+                return BadRequest(new ErrorResponse { Errors = new List<Error> { new Error { Code = 3, Message = "Invalid PIN." } } });
+            }
+
+            userCredential.Pin = BCrypt.Net.BCrypt.HashPassword(request.Pin);
             await _context.SaveChangesAsync();
+
+            await _auditService.AddRecordAsync(user.Id, HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty, "accountpin.update", new { Success = true });
 
             return Ok(new ApiSuccessResponse { Success = true });
         }
@@ -79,20 +109,29 @@ namespace AuthenticationService.Controllers
         [HttpDelete]
         public async Task<ActionResult<ApiSuccessResponse>> DeleteAccountPin([FromBody] AccountPinRequest request)
         {
-            var userCredential = await _context.UserCredentials.FirstOrDefaultAsync(uc => uc.UserId == HardcodedUserId);
+            var user = await _authenticatedUserService.GetCurrentUserAsync();
+            if (user == null)
+            {
+                return Unauthorized(new ErrorResponse { Errors = new List<Error> { new Error { Code = 0, Message = "Authorization has been denied for this request." } } });
+            }
+
+            var userCredential = await _context.UserCredentials.FirstOrDefaultAsync(uc => uc.UserId == user.Id);
 
             if (userCredential == null || string.IsNullOrEmpty(userCredential.Pin))
             {
                 return BadRequest(new ErrorResponse { Errors = new List<Error> { new Error { Code = 2, Message = "Account PIN not set." } } });
             }
 
-            if (userCredential.Pin != request.Pin)
+            if (!BCrypt.Net.BCrypt.Verify(request.Pin, userCredential.Pin))
             {
+                await _auditService.AddRecordAsync(user.Id, HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty, "accountpin.delete.attempt", new { Success = false, Reason = "InvalidPin" });
                 return Forbid();
             }
 
             userCredential.Pin = null;
             await _context.SaveChangesAsync();
+
+            await _auditService.AddRecordAsync(user.Id, HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty, "accountpin.delete", new { Success = true });
 
             return Ok(new ApiSuccessResponse { Success = true });
         }
@@ -100,7 +139,13 @@ namespace AuthenticationService.Controllers
         [HttpPost("lock")]
         public async Task<ActionResult<ApiSuccessResponse>> LockAccountPin()
         {
-            var userCredential = await _context.UserCredentials.FirstOrDefaultAsync(uc => uc.UserId == HardcodedUserId);
+            var user = await _authenticatedUserService.GetCurrentUserAsync();
+            if (user == null)
+            {
+                return Unauthorized(new ErrorResponse { Errors = new List<Error> { new Error { Code = 0, Message = "Authorization has been denied for this request." } } });
+            }
+
+            var userCredential = await _context.UserCredentials.FirstOrDefaultAsync(uc => uc.UserId == user.Id);
 
             if (userCredential != null)
             {
@@ -108,26 +153,37 @@ namespace AuthenticationService.Controllers
                 await _context.SaveChangesAsync();
             }
 
+            await _auditService.AddRecordAsync(user.Id, HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty, "accountpin.lock", new { Success = true });
+
             return Ok(new ApiSuccessResponse { Success = true });
         }
 
         [HttpPost("unlock")]
         public async Task<ActionResult<AccountPinResponse>> UnlockAccountPin([FromBody] AccountPinRequest request)
         {
-            var userCredential = await _context.UserCredentials.FirstOrDefaultAsync(uc => uc.UserId == HardcodedUserId);
+            var user = await _authenticatedUserService.GetCurrentUserAsync();
+            if (user == null)
+            {
+                return Unauthorized(new ErrorResponse { Errors = new List<Error> { new Error { Code = 0, Message = "Authorization has been denied for this request." } } });
+            }
+
+            var userCredential = await _context.UserCredentials.FirstOrDefaultAsync(uc => uc.UserId == user.Id);
 
             if (userCredential == null || string.IsNullOrEmpty(userCredential.Pin))
             {
                 return BadRequest(new ErrorResponse { Errors = new List<Error> { new Error { Code = 2, Message = "Account PIN not set." } } });
             }
 
-            if (userCredential.Pin != request.Pin)
+            if (!BCrypt.Net.BCrypt.Verify(request.Pin, userCredential.Pin))
             {
+                await _auditService.AddRecordAsync(user.Id, HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty, "accountpin.unlock.attempt", new { Success = false, Reason = "InvalidPin" });
                 return Forbid();
             }
 
             userCredential.PinUnlockedUntil = DateTime.UtcNow.AddMinutes(15);
             await _context.SaveChangesAsync();
+
+            await _auditService.AddRecordAsync(user.Id, HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty, "accountpin.unlock", new { Success = true });
 
             return Ok(new AccountPinResponse { UnlockedUntil = userCredential.PinUnlockedUntil.HasValue ? (long?)((DateTimeOffset)userCredential.PinUnlockedUntil.Value).ToUnixTimeSeconds() : null });
         }

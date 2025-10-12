@@ -2,18 +2,29 @@ using Microsoft.EntityFrameworkCore;
 using Shared.Data.Data;
 using AuditService.Data;
 using AuditService.Services;
+using Shared.Services;
+using Shared.Services.Cache;
 
 using StackExchange.Redis;
 using Asp.Versioning;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.Configuration.AddJsonFile("../Shared/shared.appsettings.json", optional: true, reloadOnChange: true);
+
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 builder.Services.AddControllers();
 builder.Services.AddScoped<IAuditService, AuditService.Services.AuditService>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<IAuthenticatedUserService, AuthenticatedUserService>();
+builder.Services.AddScoped<IRedisCacheService, RedisCacheService>();
+
+builder.Services.AddStackExchangeRedisCache(options =>
+{
+    options.Configuration = builder.Configuration.GetConnectionString("Redis");
+    options.InstanceName = "yuca_";
+});
 
 builder.Services.AddApiVersioning(options =>
 {

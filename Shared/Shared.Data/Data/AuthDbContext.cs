@@ -10,5 +10,6 @@ namespace Shared.Data.Data
         }
 
         public DbSet<UserCredential> UserCredentials { get; set; }
+        public DbSet<SecurityToken> SecurityTokens { get; set; }
     }
 }

@@ -2,14 +2,25 @@ using Microsoft.EntityFrameworkCore;
 using Shared.Data.Data;
 using StackExchange.Redis;
 using Asp.Versioning;
+using Shared.Services;
+using Shared.Services.Cache;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.Configuration.AddJsonFile("../Shared/shared.appsettings.json", optional: true, reloadOnChange: true);
+
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 builder.Services.AddControllers();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<IAuthenticatedUserService, AuthenticatedUserService>();
+builder.Services.AddScoped<IRedisCacheService, RedisCacheService>();
+
+builder.Services.AddStackExchangeRedisCache(options =>
+{
+    options.Configuration = builder.Configuration.GetConnectionString("Redis");
+    options.InstanceName = "yuca_";
+});
 
 builder.Services.AddApiVersioning(options =>
 {
@@ -24,6 +35,9 @@ builder.Services.AddApiVersioning(options =>
 });
 
 builder.Services.AddDbContext<UsersDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("PostgreSQL"),
+    x => x.MigrationsAssembly("Shared.Data")));
+builder.Services.AddDbContext<AuthDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("PostgreSQL"),
     x => x.MigrationsAssembly("Shared.Data")));
 

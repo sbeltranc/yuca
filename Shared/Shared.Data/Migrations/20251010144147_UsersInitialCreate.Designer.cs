@@ -12,7 +12,7 @@ using Shared.Data.Data;
 namespace Shared.Data.Migrations
 {
     [DbContext(typeof(UsersDbContext))]
-    [Migration("20251010005515_UsersInitialCreate")]
+    [Migration("20251010144147_UsersInitialCreate")]
     partial class UsersInitialCreate
     {
         /// <inheritdoc />

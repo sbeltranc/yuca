@@ -50,7 +50,7 @@ namespace AuthenticationService.Controllers
             var isTaken = await _usersDbContext.Users.AnyAsync(u => u.Name == username);
             if (!isTaken)
             {
-                return Ok(new RecommendedUsernameResponse { DidGenerateNewUsername = false, SuggestedUsernames = new List<string> { username } });
+                return Ok(new RecommendedUsernameResponse { SuggestedUsernames = new List<string> { username } });
             }
 
             var suggestedUsernames = new List<string>();
@@ -63,7 +63,7 @@ namespace AuthenticationService.Controllers
                 }
             }
 
-            return Ok(new RecommendedUsernameResponse { DidGenerateNewUsername = true, SuggestedUsernames = suggestedUsernames });
+            return Ok(new RecommendedUsernameResponse { SuggestedUsernames = suggestedUsernames });
         }
 
         [HttpPost("username")]

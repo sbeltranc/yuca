@@ -44,15 +44,43 @@ namespace AuthenticationService.Controllers
         [HttpGet("validate")]
         public ActionResult<UsernameValidationResponse> ValidateFromUri([FromQuery] string username, [FromQuery] DateTime birthday, [FromQuery] int context)
         {
-            // TODO: Implement logic
-            return Ok(new UsernameValidationResponse());
+            if (username.Length < 3 || username.Length > 20)
+            {
+                return Ok(new UsernameValidationResponse { Code = 1, Message = "Username is too short or too long." });
+            }
+
+            if (!Regex.IsMatch(username, @"^[a-zA-Z0-9_]+$"))
+            {
+                return Ok(new UsernameValidationResponse { Code = 2, Message = "Username can only contain letters, numbers, and underscores." });
+            }
+
+            if (username.StartsWith("_") || username.EndsWith("_"))
+            {
+                return Ok(new UsernameValidationResponse { Code = 3, Message = "Username cannot start or end with an underscore." });
+            }
+
+            return Ok(new UsernameValidationResponse { Code = 0, Message = "" });
         }
 
         [HttpPost("validate")]
         public ActionResult<UsernameValidationResponse> ValidateFromBody([FromBody] UsernameValidationRequest request)
         {
-            // TODO: Implement logic
-            return Ok(new UsernameValidationResponse());
+            if (request.Username.Length < 3 || request.Username.Length > 20)
+            {
+                return Ok(new UsernameValidationResponse { Code = 1, Message = "Username must be between 3 and 20 characters." });
+            }
+
+            if (!Regex.IsMatch(request.Username, @"^[a-zA-Z0-9_]+$"))
+            {
+                return Ok(new UsernameValidationResponse { Code = 2, Message = "Username can only contain letters, numbers, and underscores." });
+            }
+
+            if (request.Username.StartsWith("_") || request.Username.EndsWith("_"))
+            {
+                return Ok(new UsernameValidationResponse { Code = 3, Message = "Username cannot start or end with an underscore." });
+            }
+
+            return Ok(new UsernameValidationResponse { Code = 0, Message = "" });
         }
 
         [HttpPost("recover")]

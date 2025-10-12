@@ -4,6 +4,6 @@ namespace AuthenticationService.Models
 {
     public class ErrorResponse
     {
-        public List<Error> Errors { get; set; }
+        public List<Error> Errors { get; set; } = new List<Error>();
     }
 }

@@ -4,7 +4,8 @@ namespace AuthenticationService.Models
 {
     public class RecommendedUsernameResponse
     {
-        public bool DidGenerateNewUsername { get; set; }
-        public List<string> SuggestedUsernames { get; set; }
+        public int Code { get; set; }
+        public string Message { get; set; }
+        public List<string> SuggestedUsernames { get; set; } = new List<string>();
     }
 }
